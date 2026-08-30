@@ -1,0 +1,415 @@
+# Project 1 — Online Retail Data Quality, Aggregation and Business Analysis
+
+## Business scenario
+You are a **Junior Data Analyst** working for a UK-based online retailer. The company has two years of transaction data stored in separate files, plus a product master table. Before management can use the data, you must inspect, combine, clean, validate, aggregate and summarize it for business analysis.
+
+The project files contain **real transaction records** derived from the supplied *Online Retail II* workbook.
+
+### Files
+- `retail_2009_2010.csv`
+- `retail_2010_2011.csv`
+- `product_master.csv`
+
+### Scope
+Use techniques from **Lessons 1, 2 and 3**. Parts A–M focus on data preparation and quality. Parts N–T extend the same dataset into aggregation, group operations, MultiIndex, pivot tables and visualization.
+
+## Learning objectives
+By completing the project, you should be able to use Pandas to:
+
+- inspect `Series`, `DataFrame` and `Index` objects;
+- select and filter observations with `[]`, `.loc`, `.iloc`, Boolean masks and `.isin()`;
+- diagnose and correct data types;
+- detect and handle missing values and duplicates;
+- combine data with `pd.concat()` and `pd.merge()`;
+- create variables using arithmetic, `.apply()` and `.map()`;
+- sort, rank and summarize data;
+- use `unique()`, `value_counts()`, descriptive statistics and correlation;
+- aggregate business data with `groupby()` and `.agg()`;
+- distinguish and use GroupBy **filter**, **transform** and **apply**;
+- work with hierarchical indexes using **MultiIndex**;
+- reshape grouped results with `stack()` and `unstack()`;
+- build multidimensional summaries with `pivot_table()`;
+- create simple business charts using Pandas `.plot()`;
+- explain the business meaning of data-quality and aggregation decisions.
+
+# Part A — Load and understand the data
+
+### Task A1
+Load the three CSV files into DataFrames named `retail_09`, `retail_10`, and `products`.
+
+### Task A2
+For each DataFrame:
+1. display the first five observations;
+2. find the number of rows and columns;
+3. display the column names;
+4. inspect the index.
+
+# Part B — Diagnose the data
+
+### Task B1
+Use `.info()` to inspect both transaction DataFrames.
+
+Answer:
+- What is the data type of each variable?
+- Which variables contain missing values?
+- Is `InvoiceDate` stored as datetime?
+- Is `Customer ID` a numerical measurement or an identifier? Explain.
+
+### Task B2
+Convert `InvoiceDate` to datetime in both files. Correct other data types if you think it is necessary. Run `.info()` again.
+
+**Short interpretation:** Why do correct data types matter in business analysis?
+
+# Part C — Compare the two periods and combine them
+
+### Task C1 — Arithmetic alignment challenge
+Create two Series containing transaction-line counts by country:
+
+```python
+country_09 = retail_09['Country'].value_counts()
+country_10 = retail_10['Country'].value_counts()
+```
+
+Subtract the two Series. What happens when a country exists in only one period? Then try `.sub(..., fill_value=0)` and explain how Pandas aligns values by index.
+
+### Task C2 — Concatenate
+Use `pd.concat()` to combine the two transaction DataFrames into one DataFrame called `retail`.
+
+Answer:
+- How many observations are in the combined dataset?
+- Why is `ignore_index=True` useful here?
+- Inspect `retail.head()`, `retail.tail()` and `retail.index`.
+
+# Part D — Data-quality audit
+
+### Task D1 — Missing values
+Count missing observations in every variable.
+
+Answer:
+- Which variables contain missing values?
+- Which variable has the largest missing-data problem?
+- What proportion of the dataset is missing for that variable?
+
+### Task D2 — Think before deleting
+Consider two questions:
+
+1. *What is the total value of recorded transactions?*
+2. *Which individual customers made the most valuable purchases?*
+
+Would a missing `Customer ID` be equally important for both questions? Explain before deleting anything.
+
+### Task D3 — Purposeful `dropna()`
+Create a separate DataFrame named `customer_data` containing only rows with non-missing `Customer ID`. Keep the original `retail` unchanged. If appropriate, convert `Customer ID` in `customer_data` to integer.
+
+### Task D4 — Duplicates
+Count exact duplicated rows. Create `retail_clean` by removing exact duplicates.
+
+Explain: Why can duplicated transaction rows distort business results?
+
+# Part E — Identify suspicious transactions
+
+### Task E1 — Negative quantities
+Find rows where `Quantity < 0`.
+- How many are there?
+- Display the first 10.
+- Do negative quantities necessarily mean data-entry errors? Explain.
+
+### Task E2 — Non-positive prices
+Find rows where `Price <= 0`.
+- How many are there?
+- Display descriptive statistics for these rows.
+- Should they automatically be deleted? Explain.
+
+### Task E3 — Cancelled invoices with `.apply()`
+The source workbook uses invoice values beginning with `C` for cancellations.
+
+Write a function `classify_invoice(invoice)` returning `"Cancelled"` or `"Completed"`, then apply it to `Invoice` to create `InvoiceStatus`.
+
+Use `value_counts()` to inspect the new variable.
+
+### Task E4 — Practice `.map()`
+Create `CancellationFlag` from `InvoiceStatus` using `.map()`:
+- Completed → 0
+- Cancelled → 1
+
+# Part F — Create business variables
+
+### Task F1 — Transaction value
+Create:
+
+`TotalAmount = Quantity × Price`
+
+Report the mean, median, minimum and maximum and display `.describe()`.
+
+Why can `TotalAmount` be negative?
+
+### Task F2 — Value category
+Create a function and use `.apply()` to classify `TotalAmount`:
+
+| TotalAmount | ValueCategory |
+|---:|---|
+| `< 0` | Return / Cancellation |
+| `0 to < 50` | Low Value |
+| `50 to < 200` | Medium Value |
+| `>= 200` | High Value |
+
+Use `value_counts()` to inspect the result.
+
+# Part G — Selection and filtering
+
+Use Boolean masks, `.loc`, `.iloc` or `.isin()` as appropriate.
+
+1. Find transactions from **France, Germany and Spain** only.
+2. Find rows where `Country == 'United Kingdom'` **and** `TotalAmount >= 500`.
+3. Find rows where `Quantity > 100` **and** `Price > 10`.
+4. Using `.iloc`, display the first 10 rows and first 4 columns.
+5. Using `.loc`, display `Invoice`, `StockCode`, `Quantity`, `Price`, `TotalAmount` for high-value transactions (`TotalAmount >= 200`).
+
+# Part H — Sorting and ranking
+
+### Task H1
+Sort transactions by `TotalAmount` from highest to lowest and display the top 20.
+
+### Task H2
+Create `TransactionRank` using `.rank()` so the largest transaction receives rank 1.
+
+Answer:
+- Which transaction is rank 1?
+- Does the largest transaction automatically identify the company's best customer? Why not?
+
+# Part I — Merge product information
+
+The transaction files contain `StockCode`, while product descriptions are stored in `product_master.csv`.
+
+### Task I1
+Inspect `products`. Is `StockCode` unique in the product master?
+
+### Task I2
+Use `pd.merge()` to combine `retail_clean` and `products` using `StockCode`.
+
+Requirements:
+- keep **every transaction row**, even when there is no matching product description;
+- save the result as `retail_final`.
+
+Answer:
+- Which join type did you use and why?
+- Did the number of rows change after the merge?
+- How many rows have no matching `Description`?
+- Why is checking row counts before and after a merge important?
+
+### Task I3 — Fill missing product descriptions
+Fill missing descriptions with `"Unknown Product"` using `fillna()`.
+
+# Part J — Categorical and descriptive analysis
+
+### Task J1 — Countries
+Use `unique()` and `value_counts()` on `Country`.
+
+Answer:
+- Which countries appear?
+- Which countries have the largest numbers of transaction lines?
+- Why does a large number of transaction lines not necessarily mean the highest sales value?
+
+### Task J2 — Products
+Use `value_counts()` on `Description`.
+
+Does the most frequently appearing product necessarily have the highest revenue? Explain.
+
+### Task J3 — Descriptive statistics
+Select `Quantity`, `Price`, and `TotalAmount` and generate descriptive statistics.
+
+- Identify potentially unusual minima/maxima.
+- Compare mean and median of `TotalAmount`.
+- What might a large difference between mean and median suggest?
+
+# Part K — Optional correlation
+
+Calculate the correlation matrix for `Quantity`, `Price`, and `TotalAmount`.
+
+Which pair has the strongest correlation? Does correlation prove causation?
+
+# Part L — Prepare a management-ready table
+
+Use `reindex(columns=[...])` to arrange the final columns in this order:
+
+`Invoice, InvoiceDate, Customer ID, Country, StockCode, Description, Quantity, Price, TotalAmount, InvoiceStatus, CancellationFlag, ValueCategory, TransactionRank`
+
+Display the first five rows.
+
+# Part M — Management summary
+
+Write **150–200 words** for your manager covering:
+
+1. **What did you find?** Missing values, duplicates, cancellations, negative quantities and unusual prices.
+2. **What did you do?** Data-type corrections, concatenation, missing-value decisions, duplicate treatment, merge and new variables.
+3. **Is the dataset ready for business analysis?** Give a recommendation and identify remaining concerns.
+
+# Lesson 3 Extension — Data Aggregation and Group Operations
+
+Continue from `retail_final`, the cleaned and merged transaction-level DataFrame created in Parts A–L.
+
+> **Important:** `TotalAmount` can be negative because returns/cancellations are retained. Therefore, sums of `TotalAmount` should be interpreted as **net transaction value**, unless you explicitly filter to completed/positive transactions.
+
+# Part N — GroupBy fundamentals
+
+### Task N1 — Net transaction value by country
+Use `groupby()` to calculate the total `TotalAmount` for each country.
+
+Requirements:
+1. group by `Country`;
+2. sum `TotalAmount`;
+3. sort from largest to smallest;
+4. display the top 10 countries.
+
+**Interpretation:** Why can this ranking differ from `Country.value_counts()`?
+
+### Task N2 — Quantity and invoice activity by country
+For each country, calculate:
+- total quantity;
+- number of transaction lines;
+- number of unique invoices.
+
+Sort the result by number of unique invoices from highest to lowest.
+
+# Part O — Flexible aggregation with `.agg()`
+
+### Task O1 — Country performance summary
+Create one grouped table with the following statistics for each country:
+
+- `NetValue`: sum of `TotalAmount`;
+- `AverageLineValue`: mean of `TotalAmount`;
+- `MedianLineValue`: median of `TotalAmount`;
+- `TotalQuantity`: sum of `Quantity`;
+- `TransactionLines`: count of `Invoice`;
+- `UniqueInvoices`: number of unique `Invoice` values;
+- `UniqueCustomers`: number of unique non-missing `Customer ID` values.
+
+Sort by `NetValue` from highest to lowest.
+
+### Task O2 — Product performance
+Group by `Description` and calculate:
+- total quantity;
+- net transaction value;
+- average price;
+- number of transaction lines.
+
+Display the 10 products with the largest net transaction value.
+
+**Interpretation:** Is the product with the most transaction lines necessarily the product with the highest net value?
+
+# Part P — Group filtering, transformation and apply
+
+This part compares three different GroupBy operations.
+
+### Task P1 — `filter()`
+Keep only countries whose total `TotalAmount` is greater than **100,000**.
+
+Answer:
+- How many countries existed before filtering?
+- How many remain after filtering?
+- Why does `filter()` return original rows rather than one summary row per country?
+
+### Task P2 — `transform()`
+Create a new column called `CountryAverageAmount` containing the mean `TotalAmount` of the row's country.
+
+Then create:
+
+`DifferenceFromCountryAverage = TotalAmount - CountryAverageAmount`
+
+Check that the transformed result has the same number of rows as `retail_final`.
+
+### Task P3 — `apply()`
+Write a custom function that returns the **three largest transaction lines by `TotalAmount`** within each country. Apply it to each country group.
+
+**Interpretation:** How is this result structurally different from the result of `.agg()`?
+
+# Part Q — MultiIndex and reshaping
+
+### Task Q1 — Create a MultiIndex summary
+Group by both `Country` and `InvoiceStatus`, and calculate the sum of `TotalAmount`.
+
+Answer:
+- How many index levels does the result have?
+- What are the names of the index levels?
+
+### Task Q2 — Select from a MultiIndex
+Using the grouped result:
+1. select all invoice-status rows for **France** with `.loc`;
+2. select all **Cancelled** rows across countries using `.xs()`.
+
+### Task Q3 — `unstack()` and `stack()`
+Convert `InvoiceStatus` from an index level into columns using `unstack()`.
+
+Then use `stack()` to move it back into the row index.
+
+Explain:
+- Which form is **wide**?
+- Which form is **long**?
+
+# Part R — Pivot tables
+
+### Task R1 — Net value by country and invoice status
+Create a pivot table with:
+- rows: `Country`;
+- columns: `InvoiceStatus`;
+- values: `TotalAmount`;
+- aggregation: sum;
+- missing cells filled with 0;
+- row/column totals included with `margins=True`.
+
+### Task R2 — Average value by country and value category
+Create a pivot table showing the **mean `TotalAmount`** for every combination of:
+- `Country`;
+- `ValueCategory`.
+
+### Task R3 — Compare `groupby()` with `pivot_table()`
+Reproduce Task R1 using `groupby(['Country', 'InvoiceStatus'])` followed by `unstack()`.
+
+Answer:
+- Do the two approaches communicate the same business information?
+- Which syntax do you find easier to read for a two-dimensional report?
+
+# Part S — Visualize aggregated data with Pandas
+
+Use Pandas `.plot()` for this part.
+
+### Task S1 — Top-country bar chart
+Using the country net-value result from Part N:
+1. keep the top 10 countries;
+2. create a **horizontal bar chart**;
+3. give the chart a clear title and axis labels.
+
+### Task S2 — Monthly transaction-value trend
+Create a `YearMonth` variable from `InvoiceDate`, aggregate `TotalAmount` by month, and draw a **line chart**.
+
+### Task S3 — Optional scatter plot
+Take a random sample of up to 5,000 rows and create a scatter plot of:
+- x-axis: `Quantity`;
+- y-axis: `Price`.
+
+**Interpretation:** Why should extreme quantities/prices be considered when reading the scatter plot?
+
+# Part T — Lesson 3 business interpretation
+
+Write **150–200 words** summarizing what the aggregation stage adds to the earlier data-quality audit.
+
+Your discussion should include:
+1. the countries with the largest net transaction value;
+2. the difference between transaction-line frequency and aggregated value;
+3. what the completed/cancelled comparison shows;
+4. one product-level result;
+5. one pattern visible in the monthly chart;
+6. one caution about interpreting net value because returns/cancellations are included.
+
+## Updated submission checklist
+
+Submit one Jupyter Notebook containing:
+- your Python code;
+- outputs for every task;
+- short written interpretations where requested;
+- the original data-quality work from Parts A–M;
+- the Lesson 3 extension from Parts N–T;
+- the final Lesson 3 business interpretation.
+
+Suggested filename: `StudentID_Project1_OnlineRetail_Lessons1to3.ipynb`
+
